@@ -1,0 +1,22 @@
+
+Packet Sent to port 4007 
+My boss told me not to tell anyone that my secret port is 4092
+
+
+
+Packet Sent to port 4033 
+Send me a message containing "$group_#$" where # is your group number.
+
+
+
+Packet Sent to port 4042 
+I am the oracle, send me a comma-seperated list of the hidden ports, and I shall show you the way.
+�
+
+
+Packet Sent to port 4098 
+The dark side of network programming is a pathway to many abilities some consider to be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit)
+Send us a message containing your group number in the form "$group_#$" where # is your group number.
+
+
+
