@@ -20,6 +20,10 @@
 // http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c 
 
 
+// my adding imports 
+#include <sys/types.h>
+
+
 
 struct ipheader {
     //IP header format
@@ -78,19 +82,14 @@ struct pseudo_header
 
 
 ////// main ////////
-int main () {
-    // int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //raw UDP socket created using the socket function
-    //std::string ip="127.0.0.1";
-
-	
+int main (int argc, char* argv[]) {
+    
 	//Datagram to represent the packet
 	char datagram[512] , source_ip[32] , *data , *pseudogram;
 	
 	//zero out the packet buffer
 	memset (datagram, 0, 512);
 	
-	
-
     //UDP header
 	struct udpheader *udph = (struct udpheader *) (datagram + sizeof (struct ipheader));
 	struct sockaddr_in sin;
@@ -101,9 +100,9 @@ int main () {
 	strcpy(data , "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 	
 	//some address resolution
-	strcpy(source_ip , "192.168.1.1");
+	strcpy(source_ip , "192.168.1.12");
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(80);
+	sin.sin_port = htons(atoi(argv[1]));
 	sin.sin_addr.s_addr = inet_addr ("130.208.243.61");
  
 
@@ -127,7 +126,7 @@ int main () {
     //iph->ip_dst = inet_addr ("130.208.243.61");  //Destination address
 
     iph->iph_tos = 0; //Type of service
-    iph->iph_len = sizeof (struct ip) + sizeof (struct udpheader) + strlen(data);  //Total length
+    iph->iph_len = sizeof (struct ipheader) + sizeof (struct udpheader) + strlen(data);  //Total length
     iph->iph_ident = htonl(11); //Identification
     iph->iph_offset = 0; //Fragment offset
     iph->iph_ttl = 255; //Time to live
@@ -146,7 +145,7 @@ int main () {
     int size_udph = strlen(datagram) + sizeof (struct ipheader);
 
     udph->udph_srcport = htons(0);
-    udph->udph_destport = htons(4007);
+    udph->udph_destport = htons(atoi(argv[1]));
     udph->udph_len = size_udph + strlen(data);
     udph->udph_csum = 0;
 
@@ -172,7 +171,9 @@ int main () {
 
 
     //Create a raw socket
-	int s = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
+    int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //raw UDP socket created using the socket function
+	// int s = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
+	
 	
 	if(s== -1)
 	{
@@ -181,10 +182,21 @@ int main () {
 		exit(1);
 	}
 
-
-	if (setsockopt (s, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
+	int s_icmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP); //raw UDP socket created using the socket function
+	
+	
+	if(s_icmp== -1)
 	{
-		perror("Error setting IP_HDRINCL");
+		//socket creation failed, may be because of non-root privileges
+		perror("Failed to create socket");
+		exit(1);
+	}
+
+
+	static int timeout = 1;
+	if (setsockopt (s_icmp, SOL_SOCKET, SO_RCVTIMEO ,(char*)&timeout,sizeof(timeout)) < 0)
+	{
+		perror("Error socket setup options");
 		exit(0);
 	}
 
@@ -201,9 +213,49 @@ int main () {
     {
         printf ("Packet Send. Length : %d \n" , udph->udph_len);
     }
-    // sleep for 1 seconds
-    // sleep(1);
-	//}
+
+
+
+	// ICMP receive
+
+	char buffer[548];
+	struct sockaddr_storage src_addr;
+
+	struct iovec iov[1];
+	iov[0].iov_base=buffer;
+	iov[0].iov_len=sizeof(buffer);
+
+	struct msghdr message;
+	message.msg_name=&src_addr;
+	message.msg_namelen=sizeof(src_addr);
+	message.msg_iov=iov;
+	message.msg_iovlen=1;
+	message.msg_control=0;
+	message.msg_controllen=0;
+
+
+	if(recvfrom(s_icmp, buffer,sizeof(buffer), 0, (struct sockaddr *) &sin, (unsigned int *) sizeof (sin)) < 0){
+		//timeout reached
+		printf("Timout reached ");
+	}
+	else{
+		printf("%s",buffer);
+	}
+
+
+	ssize_t count=recvmsg(s,&message,0);
+
+	
+	if (count==-1) {
+		printf("%s",strerror(errno));
+	} else if (message.msg_flags&MSG_TRUNC) {
+		printf("datagram too large for buffer: truncated");
+	} else {
+		// handle_datagram(buffer,count);
+		printf("%s",buffer);
+		// printf("%d",count);
+	}
+
 	
 	return 0;
 }
