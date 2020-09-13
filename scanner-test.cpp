@@ -1,4 +1,4 @@
-//#include <sys/socket.h>
+#include <sys/socket.h>
 // #include<stdio.h>	//for printf
 //#include<string.h> //memset
 // #include<stdlib.h> //for exit(0);
@@ -34,14 +34,14 @@ struct ipheader {
     unsigned short     iph_csum; //Checksum
     unsigned int       iph_source; //Source address
     unsigned int       iph_dest; //Destination address
-};  // IPV4_HDR, *PIPV4_HDR, FAR * LPIPV4_HDR;
+};  
 
-// struct udpheader {
-//     unsigned short      udph_srcport; //Source port (2 bytes)
-//     unsigned short      udph_destport; //Destination port (2 bytes)
-//     unsigned short      udph_len; //UDP length (2 bytes)
-//     unsigned short      udph_csum; //UDP checksum (2 bytes)
-// };
+struct udpheader {
+    unsigned short      udph_srcport; //Source port (2 bytes)
+    unsigned short      udph_destport; //Destination port (2 bytes)
+    unsigned short      udph_len; //UDP length (2 bytes)
+    unsigned short      udph_csum; //UDP checksum (2 bytes)
+};
 
 unsigned short csum(unsigned short *ptr, int nbytes) {
     register long sum;
@@ -75,18 +75,13 @@ struct pseudo_header
 	u_int16_t tcp_length;
 };
 
+
+
+////// main ////////
 int main () {
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //raw UDP socket created using the socket function
+    // int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //raw UDP socket created using the socket function
     //std::string ip="127.0.0.1";
-   //Create a raw socket
-	int s = socket (PF_INET, SOCK_RAW, IPPROTO_TCP);
-	
-	if(s == -1)
-	{
-		//socket creation failed, may be because of non-root privileges
-		perror("Failed to create socket");
-		exit(1);
-	}
+
 	
 	//Datagram to represent the packet
 	char datagram[512] , source_ip[32] , *data , *pseudogram;
@@ -96,13 +91,13 @@ int main () {
 	
 	
 
-    //TCP header
-	struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct ip));
+    //UDP header
+	struct udpheader *udph = (struct udpheader *) (datagram + sizeof (struct ipheader));
 	struct sockaddr_in sin;
 	struct pseudo_header psh;
 
     //Data part
-	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
+	data = datagram + sizeof(struct ipheader) + sizeof(struct udpheader);
 	strcpy(data , "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 	
 	//some address resolution
@@ -132,7 +127,7 @@ int main () {
     //iph->ip_dst = inet_addr ("130.208.243.61");  //Destination address
 
     iph->iph_tos = 0; //Type of service
-    iph->iph_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);  //Total length
+    iph->iph_len = sizeof (struct ip) + sizeof (struct udpheader) + strlen(data);  //Total length
     iph->iph_ident = htonl(11); //Identification
     iph->iph_offset = 0; //Fragment offset
     iph->iph_ttl = 255; //Time to live
@@ -145,52 +140,70 @@ int main () {
 
 
    //Ip checksum
-	iph->iph_csum = cssum ((unsigned short *) datagram, iph->iph_len);
+	iph->iph_csum = csum ((unsigned short *) datagram, iph->iph_len);
+
+    // UDP header
+    int size_udph = strlen(datagram) + sizeof (struct ipheader);
 
     udph->udph_srcport = htons(0);
-    udph->udph_destport = htons("4007");
-    udph->udph_len = sizeof (struct udphr) + strlen(data);
+    udph->udph_destport = htons(4007);
+    udph->udph_len = size_udph + strlen(data);
     udph->udph_csum = 0;
 
-    //Now the TCP checksum
+    
+    //Now the UDP checksum
 	psh.source_address = inet_addr( source_ip );
 	psh.dest_address = sin.sin_addr.s_addr;
 	psh.placeholder = 0;
 	psh.protocol = IPPROTO_UDP;
-	psh.tcp_length = htons(sizeof(struct udphdr) + strlen(data) );
+	psh.tcp_length = htons(size_udph + strlen(data) );
 	
-	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
-	pseudogram = malloc(psize);
+	int psize = sizeof(struct pseudo_header) + size_udph + strlen(data);
+	pseudogram = (char *) malloc(psize);
 	
 	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
-	memcpy(pseudogram + sizeof(struct pseudo_header) , tcph , sizeof(struct udphdr) + strlen(data));
+	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , size_udph + strlen(data));
 	
-	udp->udph_csum = csum( (unsigned short*) pseudogram , psize);
+	udph->udph_csum = csum( (unsigned short*) pseudogram , psize);
 	
     //IP_HDRINCL to tell the kernel that headers are included in the packet kannski óþarfi??
 	int one = 1;
 	const int *val = &one;
+
+
+    //Create a raw socket
+	int s = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
 	
+	if(s== -1)
+	{
+		//socket creation failed, may be because of non-root privileges
+		perror("Failed to create socket");
+		exit(1);
+	}
+
+
 	if (setsockopt (s, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)
 	{
 		perror("Error setting IP_HDRINCL");
 		exit(0);
 	}
 
-    while (1)
-	{
-		//Send the packet
-		if (sendto (sock, datagram, udph->udph_len ,	0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
-		{
-			perror("sendto failed");
-		}
-		//Data send successfully
-		else
-		{
-			printf ("Packet Send. Length : %d \n" , udph->udph_len);
-		}
-        // sleep for 1 seconds
-        sleep(1);
-	}
+    // while (1)
+	//{
+
+    //Send the packet
+    if (sendto (s, datagram, udph->udph_len , 0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
+    {
+        perror("sendto failed");
+    }
+    //Data send successfully
+    else
+    {
+        printf ("Packet Send. Length : %d \n" , udph->udph_len);
+    }
+    // sleep for 1 seconds
+    // sleep(1);
+	//}
 	
 	return 0;
+}
