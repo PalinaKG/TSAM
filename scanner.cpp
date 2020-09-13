@@ -1,36 +1,47 @@
-#include <sys/socket.h>
+//#include <sys/socket.h>
 // #include<stdio.h>	//for printf
-#include<string.h> //memset
+//#include<string.h> //memset
 // #include<stdlib.h> //for exit(0);
 // #include<errno.h> //For errno - the error number
-// #include<netinet/udp.h>	//Provides declarations for udp header
-#include<netinet/ip.h>	//Provides declarations for ip header
+#include<netinet/udp.h>	//Provides declarations for udp header
+//#include<netinet/ip.h>	//Provides declarations for ip header
 
+#include <stdio.h>	//for printf
+#include <string.h> //memset
+#include <sys/socket.h>	//for socket ofcourse
+#include <stdlib.h> //for exit(0);
+#include <errno.h> //For errno - the error number
+// #include <netinet/tcp.h>	//Provides declarations for tcp header
+#include <netinet/ip.h>	//Provides declarations for ip header
+#include <arpa/inet.h> // inet_addr
+#include <unistd.h> // sleep()
+#include <typeinfo>
 //https://www.binarytides.com/raw-sockets-c-code-linux/
+http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c 
 
 
-struct ipheader {
-    //IP header format
-    unsigned char      iph_ihl:4 //IHL
-    unsigned char      iph_ver:4; //Version
-    unsigned char      iph_tos; //Type of service
-    unsigned short     iph_len; //Total length
-    unsigned short     iph_ident; //Identification
-    unsigned short     iph_offset; //Fragment offset
-    unsigned char      iph_ttl; //Time to live
-    unsigned char      iph_protocol; //Protocol
-    unsigned short     iph_csum; //Checksum
-    unsigned int       iph_source; //Source address
-    unsigned int       iph_dest; //Destination address
+// struct ipheader {
+//     //IP header format
+//     unsigned char      iph_ihl:4; //IHL
+//     unsigned char      iph_ver:4; //Version
+//     unsigned char      iph_tos; //Type of service
+//     unsigned short     iph_len; //Total length
+//     unsigned short     iph_ident; //Identification
+//     unsigned short     iph_offset; //Fragment offset
+//     unsigned char      iph_ttl; //Time to live
+//     unsigned char      iph_protocol; //Protocol
+//     unsigned short     iph_csum; //Checksum
+//     unsigned int       iph_source; //Source address
+//     unsigned int       iph_dest; //Destination address
 
-}
+// };
 
-struct udpheader {
-    unsigned short      udph_srcport; //Source port (2 bytes)
-    unsigned short      udph_destport; //Destination port (2 bytes)
-    unsigned short      udph_len; //UDP length (2 bytes)
-    unsigned short      udph_csum; //UDP checksum (2 bytes)
-}
+// struct udpheader {
+//     unsigned short      udph_srcport; //Source port (2 bytes)
+//     unsigned short      udph_destport; //Destination port (2 bytes)
+//     unsigned short      udph_len; //UDP length (2 bytes)
+//     unsigned short      udph_csum; //UDP checksum (2 bytes)
+// };
 
 unsigned short csum(unsigned short *ptr, int nbytes) {
     register long sum;
@@ -84,15 +95,15 @@ int main () {
 	memset (datagram, 0, 512);
 	
 	//IP header
-	struct iphdr *iph = (struct iphdr *) datagram;
+	struct ip *iph = (struct ip *) datagram;
 
     //TCP header
-	struct udphdr *udph = (struct udpheader *) (datagram + sizeof (struct ip));
+	struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct ip));
 	struct sockaddr_in sin;
 	struct pseudo_header psh;
 
     //Data part
-	data = datagram + sizeof(struct iphdr) + sizeof(struct udphdr);
+	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
 	strcpy(data , "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
 	
 	//some address resolution
@@ -100,20 +111,25 @@ int main () {
 	sin.sin_family = AF_INET;
 	sin.sin_port = htons(80);
 	sin.sin_addr.s_addr = inet_addr ("130.208.243.61");
+ 
 
+	struct in_addr * src_add = (struct in_addr *) inet_addr (source_ip);
+	iph->ip_src=src_add;
+    iph->ip_tos = 0; //Type of service
+    iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data); //Total length
+    iph->ip_id = htonl(11); //Identification er 16 bitar þannig kannski nota htnos??
+    iph->ip_off = 0; //Fragment offset
+    iph->ip_ttl = 255; //Maximum number (perhaps to large?), often recommended to use minimum of 64
+    iph->ip_p = IPPROTO_UDP; //Protocol
+	//typeid(iph->ip_src).name();
+	//typeid(iph->ip_dst)=typeid(inet_addr ("130.208.243.61"));
+	//ip_dst=inet_addr ("130.208.243.61");
+  //iph->ip_src = inet_addr (source_ip); //Checksum
+    //iph->ip_dst = inet_addr ("130.208.243.61");  //Destination address
 
-    iph->iph_tos = 0; //Type of service
-    iph->iph_len = sizeof (struct iphdr) + sizeof (struct udphdr) + strlen(data); //Total length
-    iph->iph_idens = htonl(11); //Identification er 16 bitar þannig kannski nota htnos??
-    iph->iph_offset = 0; //Fragment offset
-    iph->iph_ttl = 255; //Maximum number (perhaps to large?), often recommended to use minimum of 64
-    iph->iph_protocol = IPPROTO_UDP; //Protocol
-    iph->iph_csum = 0; //Checksum
-    iph->iph_source = inet_addr(source_ip); //Source address
-    iph->iph_dest = sin.sin_addr.s_addr; //Destination address
 
    //Ip checksum
-	iph->check = csum ((unsigned short *) datagram, iph->iph_len);
+	iph->check = sum ((unsigned short *) datagram, iph->iph_len);
 
     udph->udph_srcport = htons(0);
     udph->udph_destport = htons("4007");
