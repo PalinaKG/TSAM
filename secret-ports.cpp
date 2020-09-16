@@ -19,6 +19,11 @@
 #include <iostream>
 #include <sstream>
 
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
+
 //https://www.binarytides.com/raw-sockets-c-code-linux/
 // http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c 
 
@@ -98,9 +103,10 @@ int main (int argc, char* argv[]) {
     //Data part
     data = datagram + sizeof(struct ipheader) + sizeof(struct udpheader);
     //strcpy(data , "0x8D44");
+    strcpy(data , "$group_6$");
     
     //some address resolution
-    strcpy(source_ip , "192.168.1.12");
+    strcpy(source_ip , "10.3.26.35");
     sin.sin_family = AF_INET;
     sin.sin_port = htons(atoi(argv[1]));
     sin.sin_addr.s_addr = inet_addr ("130.208.243.61");
@@ -109,21 +115,7 @@ int main (int argc, char* argv[]) {
     // Creating ip header
     struct ipheader *iph = (struct ipheader *) datagram;
        
-    // struct in_addr * src_add = (struct in_addr *) inet_addr (source_ip);
-    // iph = (IPV4_HDR *)datagram;
-
-    // iph->ip_tos = 0; //Type of service
-    // iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data); //Total length
-    // iph->ip_id = htonl(11); //Identification er 16 bitar þannig kannski nota htnos??
-    // iph->ip_off = 0; //Fragment offset
-    // iph->ip_ttl = 255; //Maximum number (perhaps to large?), often recommended to use minimum of 64
-    // iph->ip_p = IPPROTO_UDP; //Protocol
-
-    //typeid(iph->ip_src).name();
-    //typeid(iph->ip_dst)=typeid(inet_addr ("130.208.243.61"));
-    //ip_dst=inet_addr ("130.208.243.61");
-  //iph->ip_src = inet_addr (source_ip); //Checksum
-    //iph->ip_dst = inet_addr ("130.208.243.61");  //Destination address
+ 
 
     iph->iph_tos = 0; //Type of service
     iph->iph_len = sizeof (struct ipheader) + sizeof (struct udpheader) + strlen(data);  //Total length
@@ -134,7 +126,7 @@ int main (int argc, char* argv[]) {
     
     iph->iph_source = inet_addr (source_ip); //Source address
     iph->iph_dest = inet_addr ("130.208.243.61"); //Destination address
-
+    
     // iph->iph_csum = 0; //Checksum
 
    //Ip checksum
@@ -146,6 +138,8 @@ int main (int argc, char* argv[]) {
     udph->udph_srcport = htons(0);
     udph->udph_destport = htons(atoi(argv[1]));
     udph->udph_len = size_udph + strlen(data);
+        std::cout << udph->udph_len << std::endl;
+    udph->udph_len=512;
     udph->udph_csum = 0;
 
     
@@ -169,8 +163,8 @@ int main (int argc, char* argv[]) {
     const int *val = &one;
 
     //Create a raw socket
-    int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //raw UDP socket created using the socket function
-    // int s = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
+    //int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //raw UDP socket created using the socket function
+    int s = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
     
     
     if(s== -1)
@@ -180,37 +174,19 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
-    //int s_icmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP); //raw UDP socket created using the socket function
-    
-    
-    // if(s_icmp== -1)
-    // {
-    //  //socket creation failed, may be because of non-root privileges
-    //  perror("Failed to create socket");
-    //  exit(1);
-    // }
-    
-
-    //struct timeout = 1;
-    // if (setsockopt (s_icmp, SOL_SOCKET, SO_RCVTIMEO ,(char*)&timeout,sizeof(timeout)) < 0)
-    // {
-    //  perror("Error socket setup options");
-    //  exit(0);
-    // }
 
     // while (1)
     //{
 
     //Send the packet
-    std::cout << datagram << std::endl;
-    std::cout << data << std::endl;
-    std::cout << udph->udph_len << std::endl;
-    while (1)
-    {
-        std::string input_data;
-        std::cin >> input_data;
+    // std::cout << datagram << std::endl;
+    // std::cout << data << std::endl;
+    // std::cout << udph->udph_len << std::endl;
+   
+    //     std::string input_data;
+    //     std::cin >> input_data;
         //std::cin.getline(input_data, sizeof (input_data));
-        strcpy(data , input_data.c_str());
+        //strcpy(data , input_data.c_str());
     if (sendto (s, data, udph->udph_len , 0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
     {
         perror("sendto failed");
@@ -246,8 +222,9 @@ int main (int argc, char* argv[]) {
     // else{
     //  printf("%s",buffer);
     // }
-
+    std::cout << "HAA" << std::endl;
     ssize_t count=recvmsg(s,&message,0);
+    std::cout << "NIIII" << std::endl;
 
     
        
@@ -260,9 +237,26 @@ int main (int argc, char* argv[]) {
         printf("%s",buffer);
         // printf("%d",count);
     }
-    }
+    std::vector<std::string> tokens;   // List of tokens in command from client
+  std::string token;                  // individual token being parsed
+
+  // Split command from client into tokens for parsing
+
+
+  std::stringstream stream(buffer);
+
+  // By storing them as a vector - tokens[0] is first word in string
+
+
+  while(stream >> token)
+      tokens.push_back(token);
     
 
+    std::cout << token << std::endl;
+
+    std::cout << token << std::endl;
+
+    // std::cout << tokens[strlen(tokens)-1] << std::endl;
     
     return 0;
 }
