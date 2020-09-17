@@ -90,10 +90,10 @@ struct pseudo_header
 int main (int argc, char* argv[]) {
     
     //Datagram to represent the packet
-    char datagram[512] , source_ip[32] , *data , *pseudogram;
+    char datagram[510] , source_ip[32] , *data , *pseudogram;
     
     //zero out the packet buffer
-    memset (datagram, 0, 512);
+    memset (datagram, 0, 510);
     
     //UDP header
     struct udpheader *udph = (struct udpheader *) (datagram + sizeof (struct ipheader));
@@ -126,7 +126,7 @@ int main (int argc, char* argv[]) {
     
     iph->iph_source = inet_addr (source_ip); //Source address
     iph->iph_dest = inet_addr ("130.208.243.61"); //Destination address
-    
+
     // iph->iph_csum = 0; //Checksum
 
    //Ip checksum
@@ -139,7 +139,6 @@ int main (int argc, char* argv[]) {
     udph->udph_destport = htons(atoi(argv[1]));
     udph->udph_len = size_udph + strlen(data);
         std::cout << udph->udph_len << std::endl;
-    udph->udph_len=512;
     udph->udph_csum = 0;
 
     
@@ -187,6 +186,8 @@ int main (int argc, char* argv[]) {
     //     std::cin >> input_data;
         //std::cin.getline(input_data, sizeof (input_data));
         //strcpy(data , input_data.c_str());
+    std::cout << udph->udph_len << std::endl;
+    std::cout << sizeof (sin) << std::endl;
     if (sendto (s, data, udph->udph_len , 0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
     {
         perror("sendto failed");
