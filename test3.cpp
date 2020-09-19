@@ -14,9 +14,8 @@
 #include <vector>
 #include <string>
 #include <sstream>
-/* 
-	96 bit (12 bytes) pseudo header needed for udp header checksum calculation 
-*/
+
+
 
 // struct ipheader {
 //     //IP header format
@@ -33,19 +32,17 @@
 //     unsigned int       iph_dest; //Destination address
 // };  
 
-struct udpheader {
-    unsigned short      udph_srcport; //Source port (2 bytes)
-    unsigned short      udph_destport; //Destination port (2 bytes)
-    unsigned short      udph_len; //UDP length (2 bytes)
-    unsigned short      udph_csum; //UDP checksum (2 bytes)
-};
-
+// struct udpheader {
+//     unsigned short      udph_srcport; //Source port (2 bytes)
+//     unsigned short      udph_destport; //Destination port (2 bytes)
+//     unsigned short      udph_len; //UDP length (2 bytes)
+//     unsigned short      udph_csum; //UDP checksum (2 bytes)
+// };
 
 
 
 int main (int argc, char* argv[]) 
 {
-
 	//Create a raw socket of type IPPROTO
 	int s = socket (AF_INET, SOCK_RAW, IPPROTO_RAW);
 	if(s == -1)
@@ -66,33 +63,33 @@ int main (int argc, char* argv[])
 	struct ip *iph = (struct ip *) datagram;
 	
 	//UDP header
-	struct udpheader *udph = (struct udpheader *) (datagram + sizeof (struct ip));
+	//struct udpheader *udph = (struct udpheader *) (datagram + sizeof (struct ip));
+	struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct ip));
 	
 	struct sockaddr_in dest;
 	struct sockaddr_in src;
 	
 	//Data part
 	//data = datagram + sizeof(struct ipheader) + sizeof(struct udpheader);
-	data = datagram + sizeof(struct ip) + sizeof(struct udpheader);
+	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
 	strcpy(data , "$group_6$");
 
 
 	// destionation
 	dest.sin_family = AF_INET;
-	dest.sin_port = htons(atoi(argv[1]));
+	dest.sin_port =  atoi(argv[1]); // htons(atoi(argv[1]));
 	dest.sin_addr.s_addr = inet_addr ("130.208.243.61");
 	
 
 	// source
 	src.sin_family = AF_INET;
-	src.sin_port = htons(0);
-	src.sin_addr.s_addr = inet_addr ("10.3.26.122");
+	src.sin_port =  0; //htons(0);
+	src.sin_addr.s_addr = inet_addr ("10.3.15.42");
 	
 
 
 	//some address resolution
-	strcpy(source_ip , "10.3.26.122");
-	
+	// strcpy(source_ip , "10.3.26.122");
 	
 	
 	//Fill in the IP Header
@@ -109,11 +106,11 @@ int main (int argc, char* argv[])
 	// iph->iph_dest = sin.sin_addr.s_addr;
 
 
-	iph->ip_hl = 4;
+	iph->ip_hl = 5;
 	iph->ip_v = 4;
 	iph->ip_tos = 0;
-	iph->ip_len = sizeof (struct ip) + sizeof (struct udpheader) + strlen(data);
-	iph->ip_id = htons(11);
+	iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);
+	iph->ip_id =  11; // htons(11);
 	iph->ip_off = 0;
 	iph->ip_ttl = 255;
 	iph->ip_p = IPPROTO_UDP;
@@ -123,15 +120,22 @@ int main (int argc, char* argv[])
 	
 	//Ip checksum
 
-	
+
 	//UDP header
-	udph->udph_srcport = htons(0);
-	udph->udph_destport = htons(atoi(argv[1]));
-	udph->udph_len  = htons(8 + strlen(data));	//tcp header size
-	udph->udph_csum = 0;	//leave checksum 0 now
+
+	// udph->udph_srcport = htons(0);
+	// udph->udph_destport = htons(atoi(argv[1]));
+	// udph->udph_len  = htons(8 + strlen(data));	//tcp header size
+	// udph->udph_csum = htons(0);	//leave checksum 0 now
+	
+	udph->uh_sport= 0;  // htons(0);
+	udph->uh_dport= atoi(argv[1]);  // htons(atoi(argv[1]));
+	udph->uh_ulen= 8 + strlen(data);   // htons(8 + strlen(data));	//tcp header size
+	udph->uh_sum = 0;
+
 	
     std::cout << datagram << std::endl;
-    std::cout << data << std::endl;
+    //std::cout << data << std::endl;
     //std::cout << iph << std::endl;
     //std::cout << &iph << std::endl;
     //std::cout << iph->iph_protocol << std::endl;
