@@ -28,6 +28,8 @@ int main(int argc, char* argv[]){
 
     freopen("output.txt","w",stdout); // Write results i.e. port numbers and messages to output.txt 
 
+
+
     int udp_socket;                // create socket 
     char buffer_tx[64];            // transmission buffer
     int len_buffer_tx;             // length of transmission message   
@@ -53,7 +55,7 @@ int main(int argc, char* argv[]){
 
     int n_reruns = 10;                  // number of reruns of the port range
 
-    int size = 4; 
+    int size = 8; 
     int* port_numbers = new int[size];  // initialize array containing open ports numbers
     int n_ports = 0;                    // number of current found open ports
 
@@ -73,7 +75,7 @@ int main(int argc, char* argv[]){
 	// https://stackoverflow.com/questions/13547721/udp-socket-set-timeout
 	struct timeval tv;
 	tv.tv_sec = 0;
-	tv.tv_usec = 1000;	  // 0.001s timeout 
+	tv.tv_usec = 10000;	  // 0.01s timeout 
 	if (setsockopt (udp_socket, SOL_SOCKET, SO_RCVTIMEO ,&tv,sizeof(tv)) < 0)   // set timelimit on each socket
 	{
 		perror("Error socket setup options");
@@ -134,12 +136,13 @@ int main(int argc, char* argv[]){
     // print_arr(port_numbers, n_ports);
 
 
-    fclose (stdout); // close file
+    
 
     delete [] port_numbers; // free memory 
     port_numbers = NULL; 
 
 
+    fclose (stdout); // close file
     freopen ("/dev/tty", "a", stdout);  // send printing back to console
 
     printf("Scan finished! \nResults can be seen in current working directory in output.txt\n");
