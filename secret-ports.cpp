@@ -101,9 +101,13 @@ int main (int argc, char* argv[]) {
     struct pseudo_header psh;
 
     //Data part
+    
+    std::cout << datagram << std::endl;
     data = datagram + sizeof(struct ipheader) + sizeof(struct udpheader);
-    //strcpy(data , "0x8D44");
     strcpy(data , "$group_6$");
+    std::cout << data << std::endl;
+    //strcpy(data , "0x8D44");
+   
     
     //some address resolution
     strcpy(source_ip , "10.3.26.35");
@@ -113,7 +117,7 @@ int main (int argc, char* argv[]) {
  
 
     // Creating ip header
-    struct ipheader *iph = (struct ipheader *) datagram;
+    struct ipheader *iph = (struct ipheader *) data;
        
  
 
@@ -138,7 +142,8 @@ int main (int argc, char* argv[]) {
     udph->udph_srcport = htons(0);
     udph->udph_destport = htons(atoi(argv[1]));
     udph->udph_len = size_udph + strlen(data);
-        std::cout << udph->udph_len << std::endl;
+    std::cout << udph->udph_len << std::endl;
+    std::cout << iph->iph_len << std::endl;
     udph->udph_csum = 0;
 
     
@@ -158,8 +163,8 @@ int main (int argc, char* argv[]) {
     udph->udph_csum = csum( (unsigned short*) pseudogram , psize);
     
     //IP_HDRINCL to tell the kernel that headers are included in the packet kannski óþarfi??
-    int one = 1;
-    const int *val = &one;
+    // int one = 1;
+    // const int *val = &one;
 
     //Create a raw socket
     //int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //raw UDP socket created using the socket function
@@ -186,9 +191,17 @@ int main (int argc, char* argv[]) {
     //     std::cin >> input_data;
         //std::cin.getline(input_data, sizeof (input_data));
         //strcpy(data , input_data.c_str());
+    int one = 1;
+    const int *val = &one;
+    if(setsockopt(s, IPPROTO_IP, IP_HDRINCL, val, sizeof(one))<0 )
+    {
+	    printf("Error - Socket options\n");	
+	    exit(-1);
+    }
+
     std::cout << udph->udph_len << std::endl;
     std::cout << sizeof (sin) << std::endl;
-    if (sendto (s, data, udph->udph_len , 0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
+    if (sendto (s, datagram, udph->udph_len , 0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
     {
         perror("sendto failed");
     }
