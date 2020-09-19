@@ -26,7 +26,7 @@ int main(int argc, char* argv[]){
 
     printf("Starting scan on IP:%s from port %s to %s\n\n", argv[1],argv[2],argv[3]);
 
-    freopen("output.txt","w",stdout); // Write results i.e. port numbers and messages to output.txt 
+    //freopen("output.txt","w",stdout); // Write results i.e. port numbers and messages to output.txt 
 
 
 
@@ -75,7 +75,7 @@ int main(int argc, char* argv[]){
 	// https://stackoverflow.com/questions/13547721/udp-socket-set-timeout
 	struct timeval tv;
 	tv.tv_sec = 0;
-	tv.tv_usec = 10000;	  // 0.01s timeout 
+	tv.tv_usec = 100000;	  // 0.01s timeout 
 	if (setsockopt (udp_socket, SOL_SOCKET, SO_RCVTIMEO ,&tv,sizeof(tv)) < 0)   // set timelimit on each socket
 	{
 		perror("Error socket setup options");
@@ -141,9 +141,9 @@ int main(int argc, char* argv[]){
     delete [] port_numbers; // free memory 
     port_numbers = NULL; 
 
-
-    fclose (stdout); // close file
-    freopen ("/dev/tty", "a", stdout);  // send printing back to console
+	
+    //fclose (stdout); // close file
+    //freopen ("/dev/tty", "a", stdout);  // send printing back to console
 
     printf("Scan finished! \nResults can be seen in current working directory in output.txt\n");
 

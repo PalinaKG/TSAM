@@ -39,17 +39,83 @@
 //     unsigned short      udph_csum; //UDP checksum (2 bytes)
 // };
 
+unsigned short csum_IP(unsigned short *ptr,int nbytes) 
+{
+	register long sum;
+	unsigned short oddbyte;
+	register short answer;
+
+	sum=0;
+	while(nbytes>1) {
+		sum+=*ptr++;
+		nbytes-=2;
+	}
+	if(nbytes==1) {
+		oddbyte=0;
+		*((u_char*)&oddbyte)=*(u_char*)ptr;
+		sum+=oddbyte;
+	}
+
+	sum = (sum>>16)+(sum & 0xffff);
+	sum = sum + (sum>>16);
+	answer=(short)~sum;
+	
+	return(answer);
+}
+
+unsigned short csum(int number)
+{
+    int number1=number>>8;
+    number=number&0b11111111;
+    number1=number1&0b11111111;
+    short finalNumber=number+number1;
+    return ~finalNumber;
+}
+
 
 
 int main (int argc, char* argv[]) 
 {
+	// std::string line;
+    // std::ifstream myfile ("output.txt");
+    // if (myfile.is_open())
+    // {
+    //  	while ( getline (myfile,line) )
+    // 	{
+    //   	cout << line << '\n';
+    // 	}
+    // myfile.close();
+	// }
+
+
+ int s_1 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); 
+	
+	if(s_1== -1)
+	{
+		//socket creation failed, may be because of non-root privileges
+		perror("Failed to create socket");
+		exit(1);
+	}
+
+
+
+
 	//Create a raw socket of type IPPROTO
-	int s = socket (AF_INET, SOCK_RAW, IPPROTO_RAW);
+	int s = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
 	if(s == -1)
 	{
 		//socket creation failed, may be because of non-root privileges
 		perror("Failed to create raw socket");
 		exit(1);
+	}
+
+	int one = 1;
+	const int *val = &one;
+
+	if (setsockopt (s, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)							// header included
+	{
+	printf ("Error setting IP_HDRINCL. Error number : %d . Error message : %s \n" , errno , strerror(errno));
+	exit(0);
 	}
 	
 	//Datagram to represent the packet
@@ -74,19 +140,26 @@ int main (int argc, char* argv[])
 	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
 	strcpy(data , "$group_6$");
 
+	
 
 	// destionation
 	dest.sin_family = AF_INET;
-	dest.sin_port =  atoi(argv[1]); // htons(atoi(argv[1]));
+	dest.sin_port =  htons(atoi(argv[1])); // htons(atoi(argv[1]));
 	dest.sin_addr.s_addr = inet_addr ("130.208.243.61");
 	
 
 	// source
 	src.sin_family = AF_INET;
-	src.sin_port =  0; //htons(0);
-	src.sin_addr.s_addr = inet_addr ("10.3.15.42");
+	src.sin_port =  5000; //htons(0);
+	src.sin_addr.s_addr = inet_addr ("10.3.26.8");
 	
 
+
+	if(bind(s, (struct sockaddr *)&src, sizeof(src)) < 0)
+   	{
+      perror("Failed to bind to socket:");
+      return(-1);
+   	}
 
 	//some address resolution
 	// strcpy(source_ip , "10.3.26.122");
@@ -128,10 +201,11 @@ int main (int argc, char* argv[])
 	// udph->udph_len  = htons(8 + strlen(data));	//tcp header size
 	// udph->udph_csum = htons(0);	//leave checksum 0 now
 	
-	udph->uh_sport= 0;  // htons(0);
-	udph->uh_dport= atoi(argv[1]);  // htons(atoi(argv[1]));
-	udph->uh_ulen= 8 + strlen(data);   // htons(8 + strlen(data));	//tcp header size
-	udph->uh_sum = 0;
+	udph->uh_sport= htons(5000);
+	udph->uh_dport= htons(atoi(argv[1]));
+	udph->uh_ulen= htons(8 + strlen(data));	//tcp header size
+	//udph->uh_ulen=4000;
+	udph->uh_sum = csum(0x54f);
 
 	
     std::cout << datagram << std::endl;
@@ -144,9 +218,50 @@ int main (int argc, char* argv[])
     //std::cout << &udph <<std::endl;
 
 
+	char buffer[512];
+    char datasending[10];
+    strcpy(datasending, "$group_6$");
+	struct sockaddr_storage src_addr;
+
+	struct iovec iov[1];
+	iov[0].iov_base=buffer;
+	iov[0].iov_len=sizeof(buffer);
+
+	struct msghdr message;
+	message.msg_name=&src_addr;
+	message.msg_namelen=sizeof(src_addr);
+	message.msg_iov=iov;
+	message.msg_iovlen=1;
+	message.msg_control=0;
+	message.msg_controllen=0;
+
+
     // if (sendto (s, datagram, iph->iph_len ,	0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
     //if (sendto (s, datagram, strlen(datagram),	0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
-    if (sendto (s, datagram, iph->ip_len ,	0, (struct sockaddr *) &dest, sizeof (dest)) < 0)
+   if (sendto (s_1, datasending, strlen(datasending),	0, (struct sockaddr *) &dest, sizeof (dest)) < 0)
+    {
+        perror("sendto failed");
+    }
+    //Data send successfully
+    else
+    {
+        printf ("Packet Send. Length : %d \n" , iph->ip_len);
+    }
+
+	ssize_t count=recvmsg(s_1,&message,0);
+	if (count==-1) {
+        printf("%s",strerror(errno));
+    } else if (message.msg_flags&MSG_TRUNC) {
+        printf("datagram too large for buffer: truncated");
+    } else {
+        // handle_datagram(buffer,count);
+        printf("%s",buffer);
+        // printf("%d",count);
+    }
+
+
+	
+	if (sendto (s, datagram, iph->ip_len ,	0, (struct sockaddr *) &dest, sizeof (dest)) < 0)
     {
         perror("sendto failed");
     }

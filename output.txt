@@ -1,74 +1,23 @@
 
-port 4043
+port 4042
 I am the oracle, send me a comma-seperated list of the hidden ports, and I shall show you the way.
 
 
-port 4095
+port 4080
 My boss told me not to tell anyone that my secret port is 4001
 
 
-port 4000
-Send me a message containing "$group_#$" where # is your group number.
-
-port 4001
+port 4081
 The dark side of network programming is a pathway to many abilities some consider to be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit)
 Send us a message containing your group number in the form "$group_#$" where # is your group number.
 
 port 4082
-My boss told me not to tell anyone that my secret port is 4001
-
-
-port 4086
-The dark side of network programming is a pathway to many abilities some consider to be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit)
-Send us a message containing your group number in the form "$group_#$" where # is your group number.
-
-port 4089
 Send me a message containing "$group_#$" where # is your group number.
-
-port 4088
-The dark side of network programming is a pathway to many abilities some consider to be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit)
-Send us a message containing your group number in the form "$group_#$" where # is your group number.
-
-port 4092
-Send me a message containing "$group_#$" where # is your group number.
-
-port 4047
-I am the oracle, send me a comma-seperated list of the hidden ports, and I shall show you the way.
-
-
-port 4090
-Send me a message containing "$group_#$" where # is your group number.
-
-port 4091
-My boss told me not to tell anyone that my secret port is 4001
-
-
-port 4096
-The dark side of network programming is a pathway to many abilities some consider to be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit)
-Send us a message containing your group number in the form "$group_#$" where # is your group number.
-
-port 4097
-Send me a message containing "$group_#$" where # is your group number.
-
-port 4083
-My boss told me not to tell anyone that my secret port is 4001
-
-
-port 4087
-The dark side of network programming is a pathway to many abilities some consider to be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit)
-Send us a message containing your group number in the form "$group_#$" where # is your group number.
 
 port 4044
 I am the oracle, send me a comma-seperated list of the hidden ports, and I shall show you the way.
 
 
-port 4081
-My boss told me not to tell anyone that my secret port is 4001
-
-
-port 4090
+port 4083
 The dark side of network programming is a pathway to many abilities some consider to be...unnatural. (https://en.wikipedia.org/wiki/Evil_bit)
 Send us a message containing your group number in the form "$group_#$" where # is your group number.
-
-port 4091
-Send me a message containing "$group_#$" where # is your group number.
