@@ -1,261 +1,290 @@
-#include <sys/socket.h>
-// #include<stdio.h>	//for printf
-//#include<string.h> //memset
-// #include<stdlib.h> //for exit(0);
-// #include<errno.h> //For errno - the error number
-#include<netinet/udp.h>	//Provides declarations for udp header
-#include<netinet/ip.h>	//Provides declarations for ip header
-
 #include <stdio.h>	//for printf
 #include <string.h> //memset
 #include <sys/socket.h>	//for socket ofcourse
 #include <stdlib.h> //for exit(0);
 #include <errno.h> //For errno - the error number
-// #include <netinet/tcp.h>	//Provides declarations for tcp header
+#include <netinet/udp.h>	//Provides declarations for udp header
 #include <netinet/ip.h>	//Provides declarations for ip header
 #include <arpa/inet.h> // inet_addr
-#include <unistd.h> // sleep()
-#include <typeinfo>
-//https://www.binarytides.com/raw-sockets-c-code-linux/
-// http://www.cis.syr.edu/~wedu/seed/Labs_12.04/Networking/DNS_Remote/udp.c 
+#include <netinet/in.h>
 
 
-// my adding imports 
-#include <sys/types.h>
+#include <unistd.h>   // gethostbyname
+#include <netdb.h> 
+#include <sys/types.h> 
 
 
+#include <iostream>
+#include <vector>
+#include <string>
+#include <sstream>
 
-struct ipheader {
-    //IP header format
-    unsigned char      iph_ihl:4; //IHL
-    unsigned char      iph_ver:4; //Version
-    unsigned char      iph_tos; //Type of service
-    unsigned short     iph_len; //Total length
-    unsigned short     iph_ident; //Identification
-    unsigned short     iph_offset; //Fragment offset
-    unsigned char      iph_ttl; //Time to live
-    unsigned char      iph_protocol; //Protocol
-    unsigned short     iph_csum; //Checksum
-    unsigned int       iph_source; //Source address
-    unsigned int       iph_dest; //Destination address
-};  
 
-struct udpheader {
-    unsigned short      udph_srcport; //Source port (2 bytes)
-    unsigned short      udph_destport; //Destination port (2 bytes)
-    unsigned short      udph_len; //UDP length (2 bytes)
-    unsigned short      udph_csum; //UDP checksum (2 bytes)
-};
+void arr_resize(int* & arr ){
+    // double size of arr
+    int* resize = new int[sizeof(arr)*2];
 
-unsigned short csum(unsigned short *ptr, int nbytes) {
-    register long sum;
-	unsigned short oddbyte;
-	register short answer;
+    for (unsigned int i = 0; i<sizeof(arr); i++){
+        resize[i] = arr[i];
+    }
 
-	sum=0;
-	while(nbytes>1) {
-		sum+=*ptr++;
-		nbytes-=2;
-	}
-	if(nbytes==1) {
-		oddbyte=0;
-		*((u_char*)&oddbyte)=*(u_char*)ptr;
-		sum+=oddbyte;
-	}
-
-	sum = (sum>>16)+(sum & 0xffff);
-	sum = sum + (sum>>16);
-	answer=(short)~sum;
-	
-	return(answer);
+    delete[] arr;  // delete old array
+    arr = resize;  
 }
 
-struct pseudo_header
-{
-	u_int32_t source_address;
-	u_int32_t dest_address;
-	u_int8_t placeholder;
-	u_int8_t protocol;
-	u_int16_t tcp_length;
-};
+bool not_in_arr(int* arr, int n_foundports ,int port_poss){
+    // returns false if port_poss is in arr
+    for (int i = 0; i<n_foundports; i++){
+        if (arr[i] == port_poss){
+            return false;
+        }
+    }
+    return true;
+}
+
+void print_arr(int * arr, int num_ports){
+    // prints out arr
+    for (int i = 0; i < num_ports; i++){
+        std::cout<<arr[i]<<" ";
+    }
+    std::cout<<"\n";
+}
+
+
+void print_buffer(char* buf, int start, int finish){
+	for (int i = start; i<finish; i++){
+		char c = buf[i];	
+		std::cout<<c;	
+	}
+	printf("\n");
+}
 
 
 
-////// main ////////
-int main (int argc, char* argv[]) {
-    
-	//Datagram to represent the packet
-	char datagram[512] , source_ip[32] , *data , *pseudogram;
-	
-	//zero out the packet buffer
-	memset (datagram, 0, 512);
-	
-    //UDP header
-	struct udpheader *udph = (struct udpheader *) (datagram + sizeof (struct ipheader));
-	struct sockaddr_in sin;
-	struct pseudo_header psh;
 
-    //Data part
-	data = datagram + sizeof(struct ipheader) + sizeof(struct udpheader);
-	strcpy(data , "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-	
-	//some address resolution
-	strcpy(source_ip , "192.168.1.12");
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(atoi(argv[1]));
-	sin.sin_addr.s_addr = inet_addr ("130.208.243.61");
- 
+int main(int argc, char* argv[]){
 
-	// Creating ip header
-	struct ipheader *iph = (struct ipheader *) datagram;
-       
-	// struct in_addr * src_add = (struct in_addr *) inet_addr (source_ip);
-	// iph = (IPV4_HDR *)datagram;
+	//Create a raw socket of type IPPROTO
+	int s_raw = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
+	if(s_raw == -1)
+	{
+		//socket creation failed, may be because of non-root privileges
+		perror("Failed to create raw socket");
+		exit(1);
+	}
 
-    // iph->ip_tos = 0; //Type of service
-    // iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data); //Total length
-    // iph->ip_id = htonl(11); //Identification er 16 bitar þannig kannski nota htnos??
-    // iph->ip_off = 0; //Fragment offset
-    // iph->ip_ttl = 255; //Maximum number (perhaps to large?), often recommended to use minimum of 64
-    // iph->ip_p = IPPROTO_UDP; //Protocol
-
-	//typeid(iph->ip_src).name();
-	//typeid(iph->ip_dst)=typeid(inet_addr ("130.208.243.61"));
-	//ip_dst=inet_addr ("130.208.243.61");
-  //iph->ip_src = inet_addr (source_ip); //Checksum
-    //iph->ip_dst = inet_addr ("130.208.243.61");  //Destination address
-
-    iph->iph_tos = 0; //Type of service
-    iph->iph_len = sizeof (struct ipheader) + sizeof (struct udpheader) + strlen(data);  //Total length
-    iph->iph_ident = htonl(11); //Identification
-    iph->iph_offset = 0; //Fragment offset
-    iph->iph_ttl = 255; //Time to live
-    iph->iph_protocol = IPPROTO_UDP; //Protocol
-    
-    iph->iph_source = inet_addr (source_ip); //Source address
-    iph->iph_dest = inet_addr ("130.208.243.61"); //Destination address
-
-    // iph->iph_csum = 0; //Checksum
-
-
-   //Ip checksum
-	iph->iph_csum = csum ((unsigned short *) datagram, iph->iph_len);
-
-    // UDP header
-    int size_udph = strlen(datagram) + sizeof (struct ipheader);
-
-    udph->udph_srcport = htons(0);
-    udph->udph_destport = htons(atoi(argv[1]));
-    udph->udph_len = size_udph + strlen(data);
-    udph->udph_csum = 0;
-
-    
-    //Now the UDP checksum
-	psh.source_address = inet_addr( source_ip );
-	psh.dest_address = sin.sin_addr.s_addr;
-	psh.placeholder = 0;
-	psh.protocol = IPPROTO_UDP;
-	psh.tcp_length = htons(size_udph + strlen(data) );
-	
-	int psize = sizeof(struct pseudo_header) + size_udph + strlen(data);
-	pseudogram = (char *) malloc(psize);
-	
-	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
-	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , size_udph + strlen(data));
-	
-	udph->udph_csum = csum( (unsigned short*) pseudogram , psize);
-	
-    //IP_HDRINCL to tell the kernel that headers are included in the packet kannski óþarfi??
 	int one = 1;
 	const int *val = &one;
 
-
-    //Create a raw socket
-    int s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); //raw UDP socket created using the socket function
-	// int s = socket (AF_INET, SOCK_RAW, IPPROTO_UDP);
-	
-	
-	if(s== -1)
+	if (setsockopt (s_raw, IPPROTO_IP, IP_HDRINCL, val, sizeof (one)) < 0)							// header included
 	{
-		//socket creation failed, may be because of non-root privileges
-		perror("Failed to create socket");
-		exit(1);
+		printf ("Error setting IP_HDRINCL. Error number : %d . Error message : %s \n" , errno , strerror(errno));
+		exit(0);
 	}
-
-	int s_icmp = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP); //raw UDP socket created using the socket function
-	
-	
-	if(s_icmp== -1)
-	{
-		//socket creation failed, may be because of non-root privileges
-		perror("Failed to create socket");
-		exit(1);
-	}
-
-
-	static int timeout = 1;
-	if (setsockopt (s_icmp, SOL_SOCKET, SO_RCVTIMEO ,(char*)&timeout,sizeof(timeout)) < 0)
+	struct timeval tv;
+	tv.tv_sec = 0;
+	tv.tv_usec = 100000;	  // 0.01s timeout 
+	if (setsockopt (s_raw, SOL_SOCKET, SO_RCVTIMEO ,&tv,sizeof(tv)) < 0)   // set timelimit on each socket
 	{
 		perror("Error socket setup options");
 		exit(0);
 	}
 
-    // while (1)
-	//{
-
-    //Send the packet
-    if (sendto (s, datagram, udph->udph_len , 0, (struct sockaddr *) &sin, sizeof (sin)) < 0)
-    {
-        perror("sendto failed");
-    }
-    //Data send successfully
-    else
-    {
-        printf ("Packet Send. Length : %d \n" , udph->udph_len);
-    }
-
-
-
-	// ICMP receive
-
-	char buffer[548];
-	struct sockaddr_storage src_addr;
-
-	struct iovec iov[1];
-	iov[0].iov_base=buffer;
-	iov[0].iov_len=sizeof(buffer);
-
-	struct msghdr message;
-	message.msg_name=&src_addr;
-	message.msg_namelen=sizeof(src_addr);
-	message.msg_iov=iov;
-	message.msg_iovlen=1;
-	message.msg_control=0;
-	message.msg_controllen=0;
-
-
-	if(recvfrom(s_icmp, buffer,sizeof(buffer), 0, (struct sockaddr *) &sin, (unsigned int *) sizeof (sin)) < 0){
-		//timeout reached
-		printf("Timout reached ");
-	}
-	else{
-		printf("%s",buffer);
-	}
-
-
-	ssize_t count=recvmsg(s,&message,0);
+	
+	
+	//Datagram to represent the packet
+	char datagram[4096] , *data;
+	
+	//zero out the packet buffer
+	memset (datagram, 0, 4096);
+	
+	//IP header
+	// struct ipheader *iph = (struct ipheader *) datagram;
+	struct ip *iph = (struct ip *) datagram;
+	
+	//UDP header
+	//struct udpheader *udph = (struct udpheader *) (datagram + sizeof (struct ip));
+	struct udphdr *udph = (struct udphdr *) (datagram + sizeof (struct ip));
+	
+	struct sockaddr_in dest;
+	struct sockaddr_in src;
+	
+	//Data part
+	//data = datagram + sizeof(struct ipheader) + sizeof(struct udpheader);
+	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
+	strcpy(data , "$group_6$");
 
 	
-	if (count==-1) {
-		printf("%s",strerror(errno));
-	} else if (message.msg_flags&MSG_TRUNC) {
-		printf("datagram too large for buffer: truncated");
-	} else {
-		// handle_datagram(buffer,count);
-		printf("%s",buffer);
-		// printf("%d",count);
-	}
+
+	// destionation
+	dest.sin_family = AF_INET;
+	dest.sin_port =  htons(4000); // atoi(argv[1]);
+	dest.sin_addr.s_addr = inet_addr ("130.208.243.61");  // IP for skel.ru.is
+	
+
+	int const src_port = 5000;
+
+	// source
+	src.sin_family = AF_INET;
+	src.sin_port =  src_port; 
+	// src.sin_addr.s_addr = inet_addr ("10.3.15.42");
+	//src.sin_addr.s_addr = inet_addr ("192.168.1.48");
+
+	// get current ip address
+    char hostbuffer[256]; 
+	int hostname; 
+	char *IPbuffer; 
+    struct hostent *host_entry; 
+	hostname = gethostname(hostbuffer, sizeof(hostbuffer)); 
+    host_entry = gethostbyname(hostbuffer); 
+	IPbuffer = inet_ntoa(*((struct in_addr*) host_entry->h_addr_list[0])); 
+  	
+	src.sin_addr.s_addr = inet_addr ((const char *)IPbuffer);
+
+
+	printf("Ber saman hex á ip address:\ngethostbyname= 0x%x \nHardkodud= 0x%x\n",src.sin_addr.s_addr, inet_addr ("192.168.1.48"));
+	// exit(0);
+	
+
+
+	if(bind(s_raw, (struct sockaddr *)&src, sizeof(src)) < 0)   // bind raw socket with source port
+   	{
+      perror("Failed to bind to socket:");
+      return(-1);
+   	}
+	   
+	// printf("%d -- %x\n", s_dgram,s_dgram);
+	
+	//Fill in the IP Header
+	iph->ip_hl = 5;
+	iph->ip_v = 4;
+	iph->ip_tos = 0;
+	iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);
+	iph->ip_id =  11; // htons(11);
+	iph->ip_off = 0;
+	iph->ip_ttl = 255;
+	iph->ip_p = IPPROTO_UDP;
+	iph->ip_sum = 0;
+	iph->ip_src = src.sin_addr;
+	iph->ip_dst = dest.sin_addr;
+	
+	//Ip checksum
+
+
+	//UDP header
+	udph->uh_sport= htons(src_port);
+	udph->uh_dport= htons(4000);
+	udph->uh_ulen= htons(8 + strlen(data));	
+	udph->uh_sum = 0;
+
+
+
+	char buffer[4096];
+
+
+	int n_reruns = 10;
+	int port_lo = 4000;
+	int port_hi = 4100;
+	int size = 8;
+	int* port_numbers = new int[size];  // initialize array containing open ports numbers
+    int n_ports = 0;                    // number of current found open ports
+
+
+	for (int i = 0; i<n_reruns; i++){
+        // printf("run: %d\n",i);
+        for(int port = port_lo; port <= port_hi; port++){
+
+            dest.sin_port = htons(port); // update port number
+			udph->uh_dport= htons(port);
+
+			if (sendto (s_raw, datagram, iph->ip_len , 0, (struct sockaddr *) &dest, sizeof (dest)) < 0)
+			{
+				perror("sendto failed");
+			}
+		
+
+			socklen_t socklen = sizeof(dest);
+			int c = recvfrom(s_raw, buffer, sizeof(buffer), 0, (struct sockaddr *) &dest, &socklen);
+
+			if (c<0){
+				// socket timed out or received ICMP package
+			} 
+			else
+			{
+				int index = sizeof(struct ip);
+				// printf("%d\n",index); 
+
+				//printf("%x -- %x\n",buffer[index],buffer[index+1]);
+				//std::cout<<buffer[index]<<buffer[index+1]<<"\n";
+
+				int p_numb = ((buffer[20] & 0xFF)<<8);
+				p_numb += (buffer[21] & 0xFF);
+
+				printf("\nAllur Buffer I hex:\n");
+				for (int j = 0; j<c; j++){
+					printf("%x ", buffer[j]);
+				}
+				
+
+				if(not_in_arr(port_numbers, n_ports, p_numb)){    // if port not already in port_numbers
+                    
+                    if (n_ports == size){                      // resize array if to big
+                        arr_resize(*& port_numbers);
+                        size *= 2; 
+                    }
+
+                    port_numbers[n_ports] = p_numb;              // add port to port_numbers
+                    n_ports++;
+
+                    //printf("%d -- %s\n",port,buffer_rx);
+                    printf("\n\nport %d\n",p_numb);
+					printf("\nmessage í buffer:");
+                    print_buffer((char*) buffer, sizeof(struct ip) + sizeof(struct udphdr), c);         
+
+					       
+                }
+				exit(0);
+				
+
+			}
+                
+                
+
+
+            }
+
+            
+        
+         }
+
+
+    
+
+    delete [] port_numbers; // free memory 
+    port_numbers = NULL; 
 
 	
-	return 0;
+    
+    
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
