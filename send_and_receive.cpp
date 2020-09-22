@@ -98,8 +98,8 @@ int main(int argc, char* argv[]){
 	// source
 	src.sin_family = AF_INET;
 	src.sin_port =  src_port; 
-	// src.sin_addr.s_addr = inet_addr ("10.3.15.42");
-	src.sin_addr.s_addr = inet_addr ("192.168.1.48");
+	src.sin_addr.s_addr = inet_addr ("10.3.15.42");
+	// src.sin_addr.s_addr = inet_addr ("192.168.1.48");
 
 	// get current ip address
     // char hostbuffer[256]; 
@@ -163,7 +163,8 @@ int main(int argc, char* argv[]){
     int c = recvfrom(s_raw, buffer, sizeof(buffer), 0, (struct sockaddr *) &dest, &socklen);
 
     if (c<0){
-        // socket timed out or received ICMP package
+        // socket timed out or received ICMP package   
+		printf("bingo") ;
     } 
     else
     {
