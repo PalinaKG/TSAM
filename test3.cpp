@@ -9,6 +9,12 @@
 #include <netinet/in.h>
 
 
+#include <stdio.h>    
+#include <stdlib.h>
+
+
+
+
 
 #include <iostream>
 #include <vector>
@@ -39,53 +45,147 @@
 //     unsigned short      udph_csum; //UDP checksum (2 bytes)
 // };
 
-unsigned short csum_IP(unsigned short *ptr,int nbytes) 
+
+struct pseudo_header
 {
-	register long sum;
-	unsigned short oddbyte;
-	register short answer;
+	u_int32_t source_address;
+	u_int32_t dest_address;
+	u_int8_t placeholder;
+	u_int8_t protocol;
+	u_int16_t udp_length;
+};
 
-	sum=0;
-	while(nbytes>1) {
-		sum+=*ptr++;
-		nbytes-=2;
-	}
-	if(nbytes==1) {
-		oddbyte=0;
-		*((u_char*)&oddbyte)=*(u_char*)ptr;
-		sum+=oddbyte;
-	}
 
-	sum = (sum>>16)+(sum & 0xffff);
-	sum = sum + (sum>>16);
-	answer=(short)~sum;
+typedef unsigned int u32;
+typedef unsigned short u16;
+typedef unsigned char u8;
+
+
+// unsigned short csum(unsigned short number)
+// {
+//     int number1=number>>8;
+//     number=number&0b11111111;
+//     number1=number1&0b11111111;
+//     short finalNumber=number+number1;
+//     return ~finalNumber;
+// }
+
+// unsigned short csum(unsigned short *ptr,int nbytes) 
+// {
+// 	register long sum;
+// 	unsigned short oddbyte;
+// 	register short answer;
+
+// 	sum=0;
+// 	while(nbytes>1) {
+// 		sum+=*ptr++;
+// 		nbytes-=2;
+// 	}
+// 	if(nbytes==1) {
+// 		oddbyte=0;
+// 		*((u_char*)&oddbyte)=*(u_char*)ptr;
+// 		sum+=oddbyte;
+// 	}
+// 	sum = (sum>>16)+(sum & 0xffff);
+// 	sum = sum + (sum>>16);
+// 	answer=(short)~sum;
 	
-	return(answer);
+// 	return(answer);
+// }
+
+
+
+
+// uint8_t csum(unsigned int addr)
+
+// {
+
+// 	register long sum = 0;
+
+// 	for (int i=0; i<8; i++)
+// 	{
+//            /*  This is the inner loop */
+//         sum += (addr & 0xFF);
+
+// 		addr=addr>>8;
+//     }
+
+// 	std::cout << "sum: " << sum << std::endl;
+// 	while ((sum&0xFF00)!=0)
+// 	//for (int i=0;i<4;i++)
+// 	{
+// 		//std::cout << (sum&0xFFFF0000) << std::endl;
+// 		//std::cout << ((sum&0xFFFF0000)!=0) << std::endl;
+		
+// 		int overFlow=(sum&0xFF00)>>8;
+// 		sum=(sum&0x00FF)+overFlow;
+// 		std::cout << "sum: " << sum << std::endl;
+// 	}
+//            /*  Add left-over byte, if any */
+//     //    if( count > 0 )
+//     //            sum += (unsigned char ) addr;
+
+//     //        /*  Fold 32-bit sum to 16 bits */
+//     //    while (sum>>16)
+//     //        sum = (sum & 0xffff) + (sum >> 16);
+// 	uint8_t checksum = (uint8_t) sum;
+//       return checksum;
+// }
+
+
+
+
+
+u16 getCheckSum(void *buffer, int nbytes)
+{
+    u16 *ptr = (u16 *)(buffer);
+    unsigned long sum;
+    unsigned short oddbyte;
+    unsigned short answer;
+
+    sum = 0;
+    while (nbytes > 1)
+    {
+        sum += *ptr++;
+        nbytes -= 2;
+		//decToBinary(sum);
+		//std::cout << std::endl;
+		//std::cout << "sum: " << sum << std::endl;
+    }
+    if (nbytes == 1)
+    {
+        oddbyte = 0;
+        *((u_char *)&oddbyte) = *(u_char *)ptr;
+        sum += oddbyte;
+    }
+
+    sum = (sum >> 16) + (sum & 0xffff);
+    sum = sum + (sum >> 16);
+	std::cout << "sum-before: " << sum << std::endl;
+	
+    answer = (u16)~sum;
+
+	std::cout << "sum-after: " << answer << std::endl;
+
+
+    return answer + 80; //Adding 0101-0000 
 }
 
-unsigned short csum(int number)
-{
-    int number1=number>>8;
-    number=number&0b11111111;
-    number1=number1&0b11111111;
-    short finalNumber=number+number1;
-    return ~finalNumber;
-}
+
+
+
+
+// unsigned short csum(int number)
+// {
+// 	int finalNumber=~number;
+
+
+// }
 
 
 
 int main (int argc, char* argv[]) 
 {
-	// std::string line;
-    // std::ifstream myfile ("output.txt");
-    // if (myfile.is_open())
-    // {
-    //  	while ( getline (myfile,line) )
-    // 	{
-    //   	cout << line << '\n';
-    // 	}
-    // myfile.close();
-	// }
 
 
  int s_1 = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP); 
@@ -119,7 +219,7 @@ int main (int argc, char* argv[])
 	}
 	
 	//Datagram to represent the packet
-	char datagram[4096] , source_ip[32] , *data;
+	char datagram[4096] , source_ip[32] , *data, *pseudogram;;
 	
 	//zero out the packet buffer
 	memset (datagram, 0, 4096);
@@ -138,7 +238,7 @@ int main (int argc, char* argv[])
 	//Data part
 	//data = datagram + sizeof(struct ipheader) + sizeof(struct udpheader);
 	data = datagram + sizeof(struct ip) + sizeof(struct udphdr);
-	strcpy(data , "$group_6$");
+	strcpy(data , "ABC");
 
 	
 
@@ -151,7 +251,7 @@ int main (int argc, char* argv[])
 	// source
 	src.sin_family = AF_INET;
 	src.sin_port =  5000; //htons(0);
-	src.sin_addr.s_addr = inet_addr ("10.3.26.8");
+	src.sin_addr.s_addr = inet_addr ("192.168.1.209");
 	
 
 
@@ -162,7 +262,7 @@ int main (int argc, char* argv[])
    	}
 
 	//some address resolution
-	// strcpy(source_ip , "10.3.26.122");
+	strcpy(source_ip , "192.168.1.209");
 	
 	
 	//Fill in the IP Header
@@ -205,7 +305,7 @@ int main (int argc, char* argv[])
 	udph->uh_dport= htons(atoi(argv[1]));
 	udph->uh_ulen= htons(8 + strlen(data));	//tcp header size
 	//udph->uh_ulen=4000;
-	udph->uh_sum = csum(0x54f);
+	
 
 	
     std::cout << datagram << std::endl;
@@ -260,7 +360,101 @@ int main (int argc, char* argv[])
     }
 
 
+	std::vector<std::string> tokens;   // List of tokens in command from client
+  	std::string token;                  // individual token being parsed
+  // Split command from client into tokens for parsing
+  	std::stringstream stream(buffer);
+
+  // By storing them as a vector - tokens[0] is first word in string
+
+
+  while(stream >> token)
+      tokens.push_back(token);
+    
+	std::cout << std::endl << std::endl;
+    std::cout << tokens[17] << std::endl;
+
 	
+	//udph->uh_sum = csum(stoi(tokens[17]));
+
+	
+
+	 //Now the UDP checksum using the pseudo header
+	//int tok=tokens[17];
+	std::cout << tokens[17].substr(2,5) << std::endl;
+	int num = (int)stoi(tokens[17].substr(2,5), NULL, 16); 
+	std::cout<<num <<std::endl;
+
+	//strcpy(headerData, "12");
+	//int headerData=1;
+	// struct pseudo_header psh;
+	// psh.source_address = inet_addr( source_ip );
+	// psh.dest_address = dest.sin_addr.s_addr;
+	// psh.protocol = IPPROTO_UDP;
+	// psh.placeholder = 0;
+	// psh.udp_length = htons(sizeof(struct udphdr) + strlen(data));
+	
+	// int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
+	// pseudogram = (char *)malloc(psize);
+	
+	// memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
+	// memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
+	
+
+	struct pseudo_header psh;
+	psh.source_address = inet_addr( source_ip );
+	psh.dest_address = dest.sin_addr.s_addr;
+	psh.protocol = IPPROTO_UDP;
+	psh.udp_length = htons(sizeof(struct udphdr) + strlen(data));
+	
+	int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
+	pseudogram = (char *)malloc(psize);
+	
+	memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
+	memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
+	
+	
+
+	
+	
+	// udph->uh_sum=csum((unsigned short*) pseudogram , psize);
+	// std::cout << udph->uh_sum << std::endl;
+	// int diff=num-(udph->uh_sum);
+	// std::cout << "DIF: " << diff << std::endl;
+	// data=std::to_string(diff);
+	// //strcpy(data,  itoa(diff));
+
+
+
+	// iph->ip_len = sizeof (struct ip) + sizeof (struct udphdr) + strlen(data);
+	// udph->uh_ulen= htons(8 + strlen(data));	//tcp header size
+
+	// psh.udp_length = htons(sizeof(struct udphdr) + strlen(data));
+	
+	// int psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
+	// pseudogram = (char *)malloc(psize);
+	
+	// memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
+	// memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
+	
+	
+	// psh.placeholder = diff;
+	// psh.udp_length = htons(sizeof(struct udphdr) + strlen(data));
+	// //psh.udp_length = htons(sizeof(struct udphdr) + strlen(data) );
+	// psize = sizeof(struct pseudo_header) + sizeof(struct udphdr) + strlen(data);
+	// pseudogram = (char *)malloc(psize);
+	
+
+	// memcpy(pseudogram , (char*) &psh , sizeof (struct pseudo_header));
+	// memcpy(pseudogram + sizeof(struct pseudo_header) , udph , sizeof(struct udphdr) + strlen(data));
+
+
+	std::cout << "Pseudogram: " << &pseudogram << std::endl;
+	//unsigned short gram = (unsigned short) &pseudogram;
+	//udph->uh_sum= csum(pseudogram, psize);
+	udph->uh_sum = getCheckSum(pseudogram, psize);
+	//dph->uh_sum=0;
+	std::cout << udph->uh_sum << std::endl;
 	if (sendto (s, datagram, iph->ip_len ,	0, (struct sockaddr *) &dest, sizeof (dest)) < 0)
     {
         perror("sendto failed");
