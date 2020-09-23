@@ -1,18 +1,11 @@
-#include <stdio.h>	//for printf
-#include <string.h> //memset
-#include <sys/socket.h>	//for socket ofcourse
-#include <stdlib.h> //for exit(0);
-#include <errno.h> //For errno - the error number
+#include <stdio.h>			//for printf
+#include <string.h> 		//memset
+#include <sys/socket.h>		//for socket ofcourse
+#include <stdlib.h> 		//for exit(0);
+#include <errno.h> 			//For errno - the error number
 #include <netinet/udp.h>	//Provides declarations for udp header
-#include <netinet/ip.h>	//Provides declarations for ip header
-#include <arpa/inet.h> // inet_addr
-#include <netinet/in.h>
-
-
-#include <unistd.h>   // gethostbyname
-#include <netdb.h> 
-#include <sys/types.h> 
-
+#include <netinet/ip.h>		//Provides declarations for ip header
+#include <arpa/inet.h> 		//inet_addr
 
 #include <iostream>
 #include <vector>
@@ -63,9 +56,8 @@ int main(int argc, char* argv[]){
         exit(0);
 	}
 
-    printf("Starting scan on IP:%s from port %s to %s  (ETA:~70s)\n\n", argv[1],argv[2],argv[3]);
+    printf("Starting scan on IP:%s from port %s to %s  (ETA:~%ds)\n\n", argv[1],argv[2],argv[3],(int)((atoi(argv[3])-atoi(argv[2]))*0.7));
 
-    freopen("output.txt","w",stdout); // Write results i.e. port numbers and messages to output.txt 
 
 
 	//Create a raw UDP socket
@@ -224,11 +216,8 @@ int main(int argc, char* argv[]){
     delete [] port_numbers; // free memory 
     port_numbers = NULL; 
 
-	
-    fclose (stdout); // close file
-    freopen ("/dev/tty", "a", stdout);  // send printing back to console
 
-    printf("Scan finished! \nResults can be seen in current working directory in output.txt\n");
+    printf("Scan finished!\n");
 
         
     return 0;

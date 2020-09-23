@@ -8,15 +8,6 @@
 #include <arpa/inet.h> // inet_addr
 #include <netinet/in.h>
 
-
-#include <unistd.h>   // gethostbyname
-#include <netdb.h> 
-#include <sys/types.h> 
-
-
-#include <stdio.h>    
-#include <stdlib.h>
-
 #include <iostream>
 #include <vector>
 #include <string>
@@ -38,7 +29,7 @@ void print_buffer(char* buf, int start, int finish){
 int main(int argc, char* argv[]){
 
 	if (argc != 3){
-		printf("Usage: p3 <port> <hidden port 1>,<hidden port 2>  f.x. sudo ./p3 4042 4008,4015\n");
+		printf("Usage: knocker <port> <hidden port 1>,<hidden port 2>  f.x. sudo ./knocker 4042 4008,4015\n");
         exit(0);
 	}
 

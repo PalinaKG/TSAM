@@ -1,18 +1,12 @@
-#include <stdio.h>	//for printf
-#include <string.h> //memset
-#include <sys/socket.h>	//for socket ofcourse
-#include <stdlib.h> //for exit(0);
-#include <errno.h> //For errno - the error number
+#include <stdio.h>			//for printf
+#include <string.h> 		//memset
+#include <sys/socket.h>		//for socket ofcourse
+#include <stdlib.h> 		//for exit(0);
+#include <errno.h> 			//For errno - the error number
 #include <netinet/udp.h>	//Provides declarations for udp header
-#include <netinet/ip.h>	//Provides declarations for ip header
-#include <arpa/inet.h> // inet_addr
+#include <netinet/ip.h>		//Provides declarations for ip header
+#include <arpa/inet.h> 		// inet_addr
 #include <netinet/in.h>
-
-
-#include <unistd.h>   // gethostbyname
-#include <netdb.h> 
-#include <sys/types.h> 
-
 
 #include <iostream>
 #include <vector>
@@ -50,7 +44,10 @@ int return_hex_in_buffer(char* buf, int start, int finish){
 			return (hex_num);
 		}
 	}
-	
+
+	perror("Failed to find hex number in buffer");
+	exit(0);
+	return -1;
 }
 
 
