@@ -44,6 +44,9 @@ class Client
   public:
     int sock;              // socket of client connection
     std::string name;           // Limit length of name of client's user
+    std::string ip_addr; 
+    // int port_number;
+    std::string port_number;
 
     // bool isServer = false;    //  hægt að bæta við fullt af auka gæjum hér 
 
@@ -177,7 +180,7 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
 
       else if ((startBool == true) && (endBool == false))
       {
-          if (buffer[i] == ',')
+          if ((buffer[i] == ',') || (buffer[i] == ';'))
           {
               counter++;
           }
@@ -189,69 +192,129 @@ void clientCommand(int clientSocket, fd_set *openSockets, int *maxfds,
   }
 
 
+  if (endBool){
+    for (int i = 0; i < counter+1; i++){
+      std::cout << commands[i] << std::endl;
+    }
+  }
 
-  if((tokens[0].compare("CONNECT") == 0) && (tokens.size() == 2))    
+  
+  if(commands[0].compare("QUERYSERVERS") == 0)    
   {
-     clients[clientSocket]->name = tokens[1];
+    clients[clientSocket]->name = commands[1];
+    // clients[clientSocket]->ip_addr = commands[2];
+    // clients[clientSocket]->port_number = commands[3];
+
+    // std::cout << clientSocket << std::endl; 
+
+    std::string buffer_str = "*CONNECTED,";
+
+    // CONNECTED,<MY GROUP ID>,<MY IP>,<MY PORT>
+    
+    // Making the query server list 
+    for(auto const& pair : clients){    // go through every client 
+        Client *client = pair.second;
+
+        if (client->name == commands[1]){
+            continue;
+        }
+
+        buffer_str.append(client->name);
+        buffer_str.append(",");
+        buffer_str.append(client->ip_addr);
+        buffer_str.append(",");
+        buffer_str.append(client->port_number);
+        buffer_str.append(";");
+
+    }
+
+    buffer_str.append("#");
+
+    std::cout << clientSocket << " -- vs -- " << clients[clientSocket]->sock <<  std::endl; 
+
+    std::cout << "Query server list : " << buffer_str << std::endl;
+
+    int nwrite = send(clientSocket , buffer_str.c_str(), strlen(buffer_str.c_str()),0);
+
+    if(nwrite  == -1)
+    {
+        perror("send() to server failed: ");
+    }    
+    else{
+        printf("Message %s    -- %d long sent!\n",buffer_str.c_str(),nwrite);
+    }
+    
+
+     // sendum á hann server lista
+     
      // clients[clientSocket]->isServer = false;   // skítamix til að láta serverinn vita að þessi gaur er ekki server, hægt að nota t.d. í max limit á serverumm connectaðir við þennan server
   }
-  else if(tokens[0].compare("LEAVE") == 0)
-  {
-      // Close the socket, and leave the socket handling
-      // code to deal with tidying up clients etc. when
-      // select() detects the OS has torn down the connection.
+
+//   else if((commands[0].compare("CONNECT") == 0) && (commands.size() == 2))    
+//   {
+//      clients[clientSocket]->name = tokens[1];
+//      // clients[clientSocket]->isServer = false;   // skítamix til að láta serverinn vita að þessi gaur er ekki server, hægt að nota t.d. í max limit á serverumm connectaðir við þennan server
+//   }
+
+
+
+//   else if(tokens[0].compare("LEAVE") == 0)
+//   {
+//       // Close the socket, and leave the socket handling
+//       // code to deal with tidying up clients etc. when
+//       // select() detects the OS has torn down the connection.
  
-      closeClient(clientSocket, openSockets, maxfds);
-  }
-  else if(tokens[0].compare("WHO") == 0)
-  {
-     std::cout << "Who is logged on" << std::endl;
-     std::string msg;
+//       closeClient(clientSocket, openSockets, maxfds);
+//   }
+//   else if(tokens[0].compare("WHO") == 0)
+//   {
+//      std::cout << "Who is logged on" << std::endl;
+//      std::string msg;
 
-     for(auto const& names : clients)     // skilar nöfnum þeirra sem eru tengdir við serverinn
-     {
-        msg += names.second->name + ",";
+//      for(auto const& names : clients)     // skilar nöfnum þeirra sem eru tengdir við serverinn
+//      {
+//         msg += names.second->name + ",";
 
-     }
-     // Reducing the msg length by 1 loses the excess "," - which
-     // granted is totally cheating.
-     send(clientSocket, msg.c_str(), msg.length()-1, 0);
+//      }
+//      // Reducing the msg length by 1 loses the excess "," - which
+//      // granted is totally cheating.
+//      send(clientSocket, msg.c_str(), msg.length()-1, 0);
 
-  }
-  // This is slightly fragile, since it's relying on the order
-  // of evaluation of the if statement.
-  else if((tokens[0].compare("MSG") == 0) && (tokens[1].compare("ALL") == 0))  // sendir message á alla sem eru tengdir serverin
-  {
-      std::string msg;
-      for(auto i = tokens.begin()+2;i != tokens.end();i++) 
-      {
-          msg += *i + " ";
-      }
+//   }
+//   // This is slightly fragile, since it's relying on the order
+//   // of evaluation of the if statement.
+//   else if((tokens[0].compare("MSG") == 0) && (tokens[1].compare("ALL") == 0))  // sendir message á alla sem eru tengdir serverin
+//   {
+//       std::string msg;
+//       for(auto i = tokens.begin()+2;i != tokens.end();i++) 
+//       {
+//           msg += *i + " ";
+//       }
 
-      for(auto const& pair : clients)
-      {
-          send(pair.second->sock, msg.c_str(), msg.length(),0);  
-      }
-  }
-  else if(tokens[0].compare("MSG") == 0)                                      // sendir á þann sem er í token[1] ef hann er tengdur
-  {
-      for(auto const& pair : clients)
-      {
-          if(pair.second->name.compare(tokens[1]) == 0)
-          {
-              std::string msg;
-              for(auto i = tokens.begin()+2;i != tokens.end();i++) 
-              {
-                  msg += *i + " ";
-              }
-              send(pair.second->sock, msg.c_str(), msg.length(),0);
-          }
-      }
-  }
-  else
-  {
-      std::cout << "Unknown command from client:" << buffer << std::endl;
-  }
+//       for(auto const& pair : clients)
+//       {
+//           send(pair.second->sock, msg.c_str(), msg.length(),0);  
+//       }
+//   }
+//   else if(tokens[0].compare("MSG") == 0)                                      // sendir á þann sem er í token[1] ef hann er tengdur
+//   {
+//       for(auto const& pair : clients)
+//       {
+//           if(pair.second->name.compare(tokens[1]) == 0)
+//           {
+//               std::string msg;
+//               for(auto i = tokens.begin()+2;i != tokens.end();i++) 
+//               {
+//                   msg += *i + " ";
+//               }
+//               send(pair.second->sock, msg.c_str(), msg.length(),0);
+//           }
+//       }
+//   }
+//   else
+//   {
+//       std::cout << "Unknown command from client:" << buffer << std::endl;
+//   }
      
 }
 
@@ -269,6 +332,10 @@ int main(int argc, char* argv[])
     char buffer[1025];              // buffer for reading from clients
 
 
+    // int client_counter = 0;         
+    // int* client_list[15] = {-1};            // list of connected client sockets
+
+
     int n;
 
     if(argc != 2)
@@ -279,7 +346,16 @@ int main(int argc, char* argv[])
 
     // Setup socket for server to listen to
 
-    int port = atoi(argv[1]);
+    const int port = atoi(argv[1]);
+    char ip_address_hard_coded[] = "127.0.0.1";
+
+    // creating the server it self on a client list 
+    clients[-1] = new Client(-1);
+    clients[-1]->name = "MYSELF";
+    clients[-1]->ip_addr = ip_address_hard_coded;
+    clients[-1]->port_number = argv[1];
+
+
 
     listenSock = open_socket(port); 
     printf("Listening on port: %d\n", port);
@@ -297,43 +373,125 @@ int main(int argc, char* argv[])
         maxfds = listenSock;
     }
 
-    finished = false;
 
     // If not main server then connect to main
+    // https://www.geeksforgeeks.org/explicitly-assigning-port-number-client-socket/
     if (port != 5000){
         printf("Connecting main server at port 5000...\n");
 
+        struct hostent *server;
+        server = gethostbyname(ip_address_hard_coded);      // finnur automatic IP tölu ef sett er inn "skel.ru.is" en annars bara bein IP tala
+
+
+        // struct sockaddr_in serv_addr;           // Socket address for server
+
+        // bzero((char *) &serv_addr, sizeof(serv_addr));
+        // serv_addr.sin_family = AF_INET;
+        // bcopy((char *)server->h_addr,
+        //     (char *)&serv_addr.sin_addr.s_addr,
+        //     server->h_length);
+        // serv_addr.sin_port = htons(5000);
+
+        // int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+        //int serverSocket = listenSock;
+
         // Get modifiable copy of readSockets
-        readSockets = exceptSockets = openSockets;
+        // readSockets = exceptSockets = openSockets;
 
         // Look at sockets and see which ones have something to be read()
-        n = select(maxfds + 1, &readSockets, NULL, &exceptSockets, NULL);
+                
+        
+        
+        // First, accept  any new connections to the server on the listening socket
+        if(FD_ISSET(listenSock, &readSockets))
+        {
+            clientSock = accept(listenSock, (struct sockaddr *)&client,
+                                &clientLen);
+            printf("accept***\n");
+            // Add new client to the list of open sockets
+            FD_SET(clientSock, &openSockets);
 
-        clientSock = accept(listenSock, (struct sockaddr *)&client, &clientLen);
-               
-        printf("accepted***\n");
-        // Add new client to the list of open sockets
-        FD_SET(clientSock, &openSockets);
+            // And update the maximum file descriptor
+            maxfds = std::max(maxfds, clientSock) ;
 
-        // And update the maximum file descriptor
-        maxfds = std::max(maxfds, clientSock) ;
+            // create a new client to store information.
+            clients[clientSock] = new Client(clientSock);        
+            
+           
+            // printf("Success!\n");
+        }
 
-        // create a new client to store information.
-        clients[clientSock] = new Client(clientSock);
 
-        printf("Connected to main server\n");
+        // int set = 1;                              // Toggle for setsockopt
+        // if(setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &set, sizeof(set)) < 0)
+        // {
+        //     printf("Failed to set SO_REUSEADDR for port %d\n",5000);
+        //     perror("setsockopt failed: ");
+        // }
+
+        // if(connect(serverSocket, (struct sockaddr *)&serv_addr, sizeof(serv_addr) )< 0)
+        // {
+        //     printf("Failed to open socket to server: %s\n", argv[1]);
+        //     perror("Connect failed: ");
+        //     exit(0);
+        // }
+
+        struct sockaddr_in sk_addr;   // address settings for bind() 
+        sk_addr.sin_family      = AF_INET;
+        sk_addr.sin_addr.s_addr = inet_addr(ip_address_hard_coded);
+        sk_addr.sin_port        = htons(port);
+
+        if(connect(clientSock, (struct sockaddr *)&sk_addr, sizeof(sk_addr) )< 0)
+        {
+            printf("Failed to open socket to server: %s\n", argv[1]);
+            perror("Connect failed: ");
+            exit(0);
+        }
+        
+
+        char buffer_tx[1025];                        // buffer for writing to server
+        
+        strcpy(buffer_tx, "*QUERYSERVERS,P3_GROUP_12#");
+
+        // std::cout<<"Sending message: " << buffer_tx << " \n serverSocket = " << serverSocket   << std::endl;
+        std::cout<<"Sending message: " << buffer_tx << " \n clientSocket = " << clientSock   << std::endl;
+
+        // Send query servers 
+        //int nwrite = send(serverSocket , buffer_tx, strlen(buffer_tx),0);
+        int nwrite = send(clientSock , buffer_tx, strlen(buffer_tx),0);
+
+        printf("nwrite = %d\n", nwrite);
+
+       if(nwrite  == -1)
+       {
+           perror("send() to server failed: ");
+       }       
+
+    //     sleep(1);
+
+    //    bzero(buffer_tx, sizeof(buffer_tx));
+    //    if (recv(serverSocket, buffer_tx, strlen(buffer_tx),0)<0){
+    //        perror("recv() from server failed: ");
+    //     }
+    //    std::cout<< "Message from server: " <<  buffer_tx <<std::endl; 
     }
 
 
+    finished = false;
 
     while(!finished)
     {
+
         // Get modifiable copy of readSockets
         readSockets = exceptSockets = openSockets;
         memset(buffer, 0, sizeof(buffer));
 
         // Look at sockets and see which ones have something to be read()
+
+        printf("pre-select -- %d\n", maxfds+1);
         n = select(maxfds + 1, &readSockets, NULL, &exceptSockets, NULL);
+        printf("post-select\n");
 
         if(n < 0)
         {
@@ -343,10 +501,13 @@ int main(int argc, char* argv[])
         else
         {
             // First, accept  any new connections to the server on the listening socket
-            if(FD_ISSET(listenSock, &readSockets))
+            if (clients.size() == 16){
+                printf("Max capacity of clients reached ( max: 15 ) \n");
+            }
+            if(FD_ISSET(listenSock, &readSockets)  && (clients.size() <= 16))   // server itself is clients[-1] which means max clients is 16
             {
                clientSock = accept(listenSock, (struct sockaddr *)&client,
-                                   &clientLen);
+                                &clientLen);
                printf("accept***\n");
                // Add new client to the list of open sockets
                FD_SET(clientSock, &openSockets);
@@ -356,6 +517,8 @@ int main(int argc, char* argv[])
 
                // create a new client to store information.
                clients[clientSock] = new Client(clientSock);
+
+
 
                // Decrement the number of sockets waiting to be dealt with
                n--;
@@ -384,7 +547,7 @@ int main(int argc, char* argv[])
                       // only triggers if there is something on the socket for us.
                       else
                       {
-                          std::cout << buffer << std::endl;
+                          std::cout << "Received buffer: "  << buffer << std::endl;
                           clientCommand(client->sock, &openSockets, &maxfds, 
                                         buffer);
                       }

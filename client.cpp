@@ -66,9 +66,10 @@ int main(int argc, char* argv[])
 
    if(argc != 2)
    {
-        // printf("Usage: chat_client <ip  port>\n");
         printf("Hard coded to connect to port 5000\n");
-        printf("Ctrl-C to terminate\n");
+        printf("Usage: chat_client <ip  address>\n");
+        // printf("Ctrl-C to terminate\n");
+        
         exit(0);
    }
 
@@ -120,6 +121,7 @@ int main(int argc, char* argv[])
    {
        bzero(buffer, sizeof(buffer));
 
+        printf("client input: ");
        fgets(buffer, sizeof(buffer), stdin);
 
        nwrite = send(serverSocket, buffer, strlen(buffer),0);
@@ -129,6 +131,14 @@ int main(int argc, char* argv[])
            perror("send() to server failed: ");
            finished = true;
        }
+
+
+       bzero(buffer, sizeof(buffer));
+       if (recv(serverSocket, buffer, strlen(buffer),0)<0){
+           perror("recv() from server failed: ");
+           finished = true;
+       }
+       std::cout<< "Message from server: " <<  buffer <<std::endl;
 
    }
 }
