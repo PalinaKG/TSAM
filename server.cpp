@@ -363,24 +363,28 @@ int main(int argc, char* argv[])
         sk_addr.sin_addr.s_addr = inet_addr(LOCAL_IP);
         sk_addr.sin_port        = htons(5000);
 
-        try{
-           connect(listenSock, (struct sockaddr *)&sk_addr, sizeof(sk_addr) ) 
-        }
-        catch(){
-            // catch EINPROGRESS
+        // try{
+        //    connect(listenSock, (struct sockaddr *)&sk_addr, sizeof(sk_addr) );
+        // }
+        // catch(errno){
             
+            
+        // }
+        //connect(listenSock, (struct sockaddr *)&sk_addr, sizeof(sk_addr) );
+        
+
+
+
+        if(connect(listenSock, (struct sockaddr *)&sk_addr, sizeof(sk_addr) )< 0)
+        {
+            std::cout << "ERROR: " << errno << std::endl;
+            printf("Failed to open socket to server: %s\n", argv[1]);
+            perror("Connect failed: ");
+            exit(0);
         }
-
-
-        // if(connect(listenSock, (struct sockaddr *)&sk_addr, sizeof(sk_addr) )< 0)
-        // {
-        //     printf("Failed to open socket to server: %s\n", argv[1]);
-        //     perror("Connect failed: ");
-        //     exit(0);
-        // }
-        // else{
-        //     printf("Connection successful! \n");
-        // }
+        else{
+            printf("Connection successful! \n");
+        }
         
 
         char buffer_tx[1025];                        // buffer for writing to server
@@ -402,25 +406,33 @@ int main(int argc, char* argv[])
        }       
 
     }
-
-
+    else
+{
 
     printf("Listening on port: %d\n", atoi(argv[1]));
+    //int listenSock1;                 // Socket for connections to server
+
+    //listenSock = open_socket(port); 
+    //listen(listenSock, BACKLOG);
 
     if(listen(listenSock, BACKLOG) < 0)
     {
+        std::cout << errno << std::endl;
         printf("Listen failed on port %s\n", argv[1]);
+        perror("LISTEN FAILED");
         exit(0);
     }
     else 
-    // Add listen socket to socket set we are monitoring
+    //Add listen socket to socket set we are monitoring
     {
         FD_ZERO(&openSockets);
         FD_SET(listenSock, &openSockets);
         maxfds = listenSock;
     }
+}
 
     finished = false;
+
 
     while(!finished)
     {
@@ -441,8 +453,10 @@ int main(int argc, char* argv[])
             // First, accept  any new connections to the server on the listening socket
             if(FD_ISSET(listenSock, &readSockets))
             {
+                
                clientSock = accept(listenSock, (struct sockaddr *)&client,
                                    &clientLen);
+                std::cout << "clientSock: " << clientSock << std::endl;
                printf("accept***\n");
                // Add new client to the list of open sockets
                FD_SET(clientSock, &openSockets);
